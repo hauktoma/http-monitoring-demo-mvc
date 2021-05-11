@@ -22,7 +22,7 @@ class MonitoredEndpointService(
 ) {
     fun createEndpoint(
         input: MonitoredEndpointInFDTO
-    ): MonitoredEndpointDBO = validateCreateEndpointPayload(
+    ): MonitoredEndpointDBO = validateInputEndpointPayload(
         input
     ).let {
         val now = Instant.now()
@@ -41,7 +41,7 @@ class MonitoredEndpointService(
         kotlin.runCatching { monitoredEndpointRepo.save(newDBO) }.getOrElse { determineAndThrowCreateError(input, it) }
     }
 
-    private fun validateCreateEndpointPayload(
+    private fun validateInputEndpointPayload(
         input: MonitoredEndpointInFDTO
     ): Unit = when {
         input.monitoredInterval < minMonitoredInterval -> throw ResponseStatusException(
@@ -71,12 +71,14 @@ class MonitoredEndpointService(
 
     fun updateEndpoint(
         id: UUID, input: MonitoredEndpointInFDTO
-    ): MonitoredEndpointDBO = monitoredEndpointRepo.updateForUser(
-        id, getUserId(), input.name, input.url, input.monitoredInterval
-    ).let { rowsUpdated ->
-        when (rowsUpdated) {
-            1 -> getEndpoint(id)
-            else -> throwEndpointNotFound(id)
+    ): MonitoredEndpointDBO = validateInputEndpointPayload(input).let {
+        monitoredEndpointRepo.updateForUser(
+            id, getUserId(), input.name, input.url, input.monitoredInterval
+        ).let { rowsUpdated ->
+            when (rowsUpdated) {
+                1 -> getEndpoint(id)
+                else -> throwEndpointNotFound(id)
+            }
         }
     }
 

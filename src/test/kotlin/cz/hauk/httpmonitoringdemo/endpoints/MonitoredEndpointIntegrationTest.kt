@@ -1,61 +1,18 @@
 package cz.hauk.httpmonitoringdemo.endpoints
 
-import cz.hauk.httpmonitoringdemo.HttpMonitoringDemoApplication
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertAll
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase
-import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.boot.test.web.client.TestRestTemplate
-import org.springframework.http.HttpEntity
-import org.springframework.http.HttpHeaders
-import org.springframework.http.HttpMethod
 import org.springframework.http.HttpStatus
-import org.springframework.test.context.ActiveProfiles
 import java.net.URL
 import java.time.Duration
 import java.util.*
 
-@SpringBootTest(
-    classes = [HttpMonitoringDemoApplication::class],
-    webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-)
-@AutoConfigureTestDatabase
-@ActiveProfiles("test")
-internal class MonitoredEndpointIntegrationTest {
-
-    @Autowired
-    lateinit var restTemplate: TestRestTemplate
+internal class MonitoredEndpointIntegrationTest : MonitoredEndpointIntegrationTestBase() {
 
     @Test
     fun `can create update and delete monitored endpoint properly`() {
-        val input = mockMonitoredEndpointInFDTO()
-
-        // create the monitored endpoint
-        val createResponse = restTemplate.exchange(
-            "/api/v1/monitoredEndpoints",
-            HttpMethod.POST,
-            HttpEntity(
-                input,
-                HttpHeaders().apply { set("Authorization", "ApiKey 93f39e2f-80de-4033-99ee-249d92736a25") }
-            ),
-            MonitoredEndpointOutFDTO::class.java
-        ).also { response ->
-            assertAll(
-                { Assertions.assertThat(response.statusCode).isEqualTo(HttpStatus.CREATED) },
-                { Assertions.assertThat(response.hasBody()).isTrue() },
-                { Assertions.assertThat(response.body?.id).isNotNull() },
-                { Assertions.assertThat(response.body?.createdAt).isNotNull() },
-                { Assertions.assertThat(response.body?.monitoredInterval).isEqualTo(input.monitoredInterval) },
-                { Assertions.assertThat(response.body?.url).isEqualTo(input.url) },
-                { Assertions.assertThat(response.body?.name).isEqualTo(input.name) },
-                {
-                    Assertions.assertThat(response.body?.ownerUserId?.toString())
-                        .isEqualTo("aeb0686e-592d-4853-be57-ac64c892c370")
-                },
-            )
-        }.let { it.body!! }
+        val createResponse = createAndAssertEndpointRemotely()
 
         // change the monitored endpoint
         val update = MonitoredEndpointInFDTO(
@@ -63,16 +20,7 @@ internal class MonitoredEndpointIntegrationTest {
             url = URL("https://proper-url-after-update.com"),
             monitoredInterval = Duration.ofSeconds(12)
         )
-        restTemplate.exchange(
-            "/api/v1/monitoredEndpoints/id-{id}",
-            HttpMethod.PUT,
-            HttpEntity(
-                update,
-                HttpHeaders().apply { set("Authorization", "ApiKey 93f39e2f-80de-4033-99ee-249d92736a25") }
-            ),
-            MonitoredEndpointOutFDTO::class.java,
-            mapOf("id" to createResponse.id.toString())
-        ).also { response ->
+        updateEndpointRemotely(createResponse.id, update).also { response ->
             assertAll(
                 { Assertions.assertThat(response.statusCode).isEqualTo(HttpStatus.OK) },
                 { Assertions.assertThat(response.hasBody()).isTrue() },
@@ -89,15 +37,7 @@ internal class MonitoredEndpointIntegrationTest {
         }
 
         // retrieve the monitored endpoint
-        restTemplate.exchange(
-            "/api/v1/monitoredEndpoints/id-{id}",
-            HttpMethod.GET,
-            HttpEntity<Unit>(
-                HttpHeaders().apply { set("Authorization", "ApiKey 93f39e2f-80de-4033-99ee-249d92736a25") }
-            ),
-            MonitoredEndpointOutFDTO::class.java,
-            mapOf("id" to createResponse.id.toString())
-        ).also { response ->
+        getEndpointRemotely(createResponse.id).also { response ->
             assertAll(
                 { Assertions.assertThat(response.statusCode).isEqualTo(HttpStatus.OK) },
                 { Assertions.assertThat(response.hasBody()).isTrue() },
@@ -114,35 +54,152 @@ internal class MonitoredEndpointIntegrationTest {
         }
 
         // delete the monitored endpoint
-        restTemplate.exchange(
-            "/api/v1/monitoredEndpoints/id-{id}",
-            HttpMethod.DELETE,
-            HttpEntity<Unit>(
-                HttpHeaders().apply { set("Authorization", "ApiKey 93f39e2f-80de-4033-99ee-249d92736a25") }
-            ),
-            Unit::class.java,
-            mapOf("id" to createResponse.id.toString())
-        ).also { response ->
+        deleteEndpointRemotely(createResponse.id).also { response ->
             Assertions.assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
         }
 
         // assert that HTTP 404 is returned when the endpoint is deleted
-        restTemplate.exchange(
-            "/api/v1/monitoredEndpoints/id-{id}",
-            HttpMethod.GET,
-            HttpEntity<Unit>(
-                HttpHeaders().apply { set("Authorization", "ApiKey 93f39e2f-80de-4033-99ee-249d92736a25") }
-            ),
-            Unit::class.java,
-            mapOf("id" to createResponse.id.toString())
-        ).also { response ->
+        getEndpointRemotelyNoBody(createResponse.id).also { response ->
             Assertions.assertThat(response.statusCode).isEqualTo(HttpStatus.NOT_FOUND)
         }
     }
 
-    private fun mockMonitoredEndpointInFDTO(): MonitoredEndpointInFDTO = MonitoredEndpointInFDTO(
-        name = UUID.randomUUID().toString(),
-        url = URL("https://proper-url.com"),
-        monitoredInterval = Duration.ofSeconds(11)
-    )
+    // ?|FIXME THa maybe cleaner to return forbidden HTTP 403? Guessing?
+    @Test
+    fun `monitored endpoint cannot be updated or retrieved by other users`() {
+        val createdEndpoint = createAndAssertEndpointRemotely(apiKey = TestUserData.USER_API_KEY_1)
+
+        assertAll(
+            {
+                // another user cannot read other user's endpoint
+                getEndpointRemotelyNoBody(
+                    id = createdEndpoint.id, apiKey = TestUserData.USER_API_KEY_2
+                ).also { result ->
+                    Assertions.assertThat(result.statusCode).isEqualTo(HttpStatus.NOT_FOUND)
+                }
+            }, {
+                // another user cannot update other user's endpoint
+                updateEndpointRemotelyNoBody(
+                    id = createdEndpoint.id,
+                    update = mockRandomMonitoredEndpointInFDTO(),
+                    apiKey = TestUserData.USER_API_KEY_2
+                ).also { result ->
+                    Assertions.assertThat(result.statusCode).isEqualTo(HttpStatus.NOT_FOUND)
+                }
+            }, {
+                // another user can call the delete, but nothing actually happens
+                deleteEndpointRemotely(
+                    id = createdEndpoint.id, apiKey = TestUserData.USER_API_KEY_2
+                ).let { result ->
+                    Assertions.assertThat(result.statusCode).isEqualTo(HttpStatus.OK)
+                }
+
+                // assert that the delete did not happen for first user
+                getEndpointRemotely(
+                    id = createdEndpoint.id, apiKey = TestUserData.USER_API_KEY_1
+                ).also { result ->
+                    Assertions.assertThat(result.statusCode).isEqualTo(HttpStatus.OK)
+                    Assertions.assertThat(result.body?.id).isEqualTo(createdEndpoint.id)
+                }
+            }
+        )
+    }
+
+    @Test
+    fun `url and name is unique for one user`() {
+        val createdEndpoint = createAndAssertEndpointRemotely(apiKey = TestUserData.USER_API_KEY_1)
+
+        assertAll(
+            {
+                // cannot use the name again for user
+                val inputWithDuplicateName = mockRandomMonitoredEndpointInFDTO().copy(name = createdEndpoint.name)
+
+                createEndpointRemotelyNoBody( // user 1 will fail
+                    input = inputWithDuplicateName,
+                    apiKey = TestUserData.USER_API_KEY_1
+                ).also { result ->
+                    Assertions.assertThat(result.statusCode).isEqualTo(HttpStatus.BAD_REQUEST)
+                }
+
+                createEndpointRemotelyNoBody( // user 2 will succeed
+                    input = inputWithDuplicateName,
+                    apiKey = TestUserData.USER_API_KEY_2
+                ).also { result ->
+                    Assertions.assertThat(result.statusCode).isEqualTo(HttpStatus.CREATED)
+                }
+            }, {
+                // cannot use the url again for user
+                val inputWithDuplicateUrl = mockRandomMonitoredEndpointInFDTO().copy(url = createdEndpoint.url)
+
+                createEndpointRemotelyNoBody( // user 1 will fail
+                    input = inputWithDuplicateUrl,
+                    apiKey = TestUserData.USER_API_KEY_1
+                ).also { result ->
+                    Assertions.assertThat(result.statusCode).isEqualTo(HttpStatus.BAD_REQUEST)
+                }
+
+                createEndpointRemotelyNoBody( // user 2 will succeed
+                    input = inputWithDuplicateUrl,
+                    apiKey = TestUserData.USER_API_KEY_2
+                ).also { result ->
+                    Assertions.assertThat(result.statusCode).isEqualTo(HttpStatus.CREATED)
+                }
+            }
+        )
+    }
+
+    @Test
+    fun `create and update endpoint general negative tests`() {
+        val createdEndpoint = createAndAssertEndpointRemotely(mockRandomMonitoredEndpointInFDTO())
+
+        assertAll(
+            { // empty name
+                val emptyNameInput = mockRandomMonitoredEndpointInFDTO().copy(name = "")
+
+                createEndpointRemotelyNoBody(emptyNameInput).also { result ->
+                    Assertions.assertThat(result.statusCode).isEqualTo(HttpStatus.BAD_REQUEST)
+                }
+
+                updateEndpointRemotelyNoBody(createdEndpoint.id, emptyNameInput).also { result ->
+                    Assertions.assertThat(result.statusCode).isEqualTo(HttpStatus.BAD_REQUEST)
+                }
+            }, { // name too long
+                val tooLongNameInput = mockRandomMonitoredEndpointInFDTO().copy(name = "".padStart(257, 'x'))
+
+                createEndpointRemotelyNoBody(tooLongNameInput).also { result ->
+                    Assertions.assertThat(result.statusCode).isEqualTo(HttpStatus.BAD_REQUEST)
+                }
+
+                updateEndpointRemotelyNoBody(createdEndpoint.id, tooLongNameInput).also { result ->
+                    Assertions.assertThat(result.statusCode).isEqualTo(HttpStatus.BAD_REQUEST)
+                }
+            }, { // URL too long
+                val longUrlInput = mockRandomMonitoredEndpointInFDTO().copy(
+                    url = URL("https://${"".padStart(9999, 'x')}.com")
+                )
+
+                createEndpointRemotelyNoBody(longUrlInput).also { result ->
+                    Assertions.assertThat(result.statusCode).isEqualTo(HttpStatus.BAD_REQUEST)
+                }
+
+                updateEndpointRemotelyNoBody(createdEndpoint.id, longUrlInput).also { result ->
+                    Assertions.assertThat(result.statusCode).isEqualTo(HttpStatus.BAD_REQUEST)
+                }
+            }, { // low duration
+                val lowDurationInput = mockRandomMonitoredEndpointInFDTO().copy(monitoredInterval = Duration.ZERO)
+
+                createEndpointRemotelyNoBody(lowDurationInput).also { result ->
+                    Assertions.assertThat(result.statusCode).isEqualTo(HttpStatus.BAD_REQUEST)
+                }
+
+                updateEndpointRemotelyNoBody(createdEndpoint.id, lowDurationInput).also { result ->
+                    Assertions.assertThat(result.statusCode).isEqualTo(HttpStatus.BAD_REQUEST)
+                }
+            }, { // cannot update non existing endpoint
+                updateEndpointRemotelyNoBody(UUID.randomUUID(), mockRandomMonitoredEndpointInFDTO()).also { result ->
+                    Assertions.assertThat(result.statusCode).isEqualTo(HttpStatus.NOT_FOUND)
+                }
+            }
+        )
+    }
 }

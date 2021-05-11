@@ -24,12 +24,22 @@ object URLConverter {
         override fun deserialize(
             jp: JsonParser, ctxt: DeserializationContext
         ): URL? = jp.text.let { input ->
+            if (input.length > MAX_URL_LENGTH) ctxt.handleWeirdStringValue(
+                URL::class.java,
+                input,
+                "URL too long. Max length: $MAX_URL_LENGTH, given: ${input.length}."
+            )
+
             kotlin.runCatching {
                 URL(input)
             }.getOrElse {
                 ctxt.handleWeirdStringValue(URL::class.java, input, "Invalid URL.")
                 null
             }
+        }
+
+        companion object {
+            private const val MAX_URL_LENGTH = 9999
         }
     }
 }

@@ -6,8 +6,10 @@ import java.net.URL
 import java.time.Duration
 import java.time.Instant
 import java.util.*
+import javax.validation.Valid
 import javax.validation.constraints.NotBlank
 import javax.validation.constraints.NotNull
+import javax.validation.constraints.Size
 
 /**
  * Defines REST API for manipulation with monitored HTTP endpoints.
@@ -22,13 +24,13 @@ class MonitoredEndpointController(
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     fun addMonitoredEndpoint(
-        @RequestBody input: MonitoredEndpointInFDTO
+        @Valid @RequestBody input: MonitoredEndpointInFDTO
     ): MonitoredEndpointOutFDTO = endpointService.createEndpoint(input).toFDTO()
 
     @PutMapping("/id-{id}")
     fun updateMonitoredEndpoint(
         @PathVariable("id", required = true) id: UUID,
-        @RequestBody input: MonitoredEndpointInFDTO
+        @Valid @RequestBody input: MonitoredEndpointInFDTO
     ): MonitoredEndpointOutFDTO = endpointService.updateEndpoint(id, input).toFDTO()
 
     @GetMapping("/id-{id}")
@@ -43,7 +45,7 @@ class MonitoredEndpointController(
 }
 
 data class MonitoredEndpointInFDTO(
-    @field:NotBlank
+    @field:NotBlank @field:Size(min = 3, max = 256)
     val name: String,
     @field:NotNull
     val url: URL,
