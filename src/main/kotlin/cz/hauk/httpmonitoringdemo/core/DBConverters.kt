@@ -6,6 +6,7 @@ import org.springframework.data.convert.ReadingConverter
 import org.springframework.data.convert.WritingConverter
 import org.springframework.data.jdbc.core.convert.JdbcCustomConversions
 import org.springframework.data.jdbc.repository.config.AbstractJdbcConfiguration
+import org.springframework.http.MediaType
 import org.springframework.stereotype.Service
 import java.net.URL
 import java.time.Duration
@@ -20,7 +21,9 @@ class MyJdbcConfiguration : AbstractJdbcConfiguration() {
         UrlToStringConverter(),
         StringToUrlConverter(),
         DurationToLongConverter(),
-        LongToDurationConverter()
+        LongToDurationConverter(),
+        MediaTypeToString(),
+        StringToMediaType()
     ).let { converters ->
         JdbcCustomConversions(converters)
     }
@@ -54,4 +57,14 @@ class DurationToLongConverter : Converter<Duration, Long> {
 @ReadingConverter
 class LongToDurationConverter : Converter<Long, Duration> {
     override fun convert(source: Long): Duration = Duration.ofMillis(source)
+}
+
+@WritingConverter
+class MediaTypeToString : Converter<MediaType, String> {
+    override fun convert(source: MediaType): String = source.toString()
+}
+
+@ReadingConverter
+class StringToMediaType : Converter<String, MediaType> {
+    override fun convert(source: String): MediaType = MediaType.parseMediaType(source)
 }

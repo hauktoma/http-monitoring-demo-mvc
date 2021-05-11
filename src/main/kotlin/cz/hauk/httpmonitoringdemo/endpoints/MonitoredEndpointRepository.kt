@@ -59,6 +59,30 @@ interface MonitoredEndpointRepository : CrudRepository<MonitoredEndpointDBO, UUI
         @Param("url") url: URL,
         @Param("monitored_interval") monitoredInterval: Duration,
     ): Int
+
+    @Query(
+        """
+            SELECT * FROM monitored_endpoint_dbo 
+            WHERE next_check_at < :now
+            ORDER BY next_check_at ASC
+            LIMIT 1
+            FOR UPDATE SKIP LOCKED
+        """
+    )
+    fun findAndLockRecordForMonitoring(@Param("now") now: Instant): MonitoredEndpointDBO?
+
+    @Modifying
+    @Query(
+        """
+            UPDATE monitored_endpoint_dbo SET
+               next_check_at = :reschedule_to
+            WHERE id = :id
+        """
+    )
+    fun rescheduleRecordForMonitoring(
+        @Param("id") id: UUID,
+        @Param("reschedule_to") rescheduleTo: Instant
+    ): Int
 }
 
 data class MonitoredEndpointDBO(

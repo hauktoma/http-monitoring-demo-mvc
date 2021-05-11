@@ -29,9 +29,10 @@ CREATE TABLE IF NOT EXISTS monitored_endpoint_dbo (
 CREATE TABLE IF NOT EXISTS monitoring_result_dbo (
     id VARCHAR(36) PRIMARY KEY NOT NULL,
     checked_at TIMESTAMP NOT NULL,
-    status_code VARCHAR(60) NOT NULL,
+    status_code VARCHAR(60),
     content_type VARCHAR(60),
-    payload TEXT,
-    monitored_endpoint_id VARCHAR(36)
+    payload MEDIUMTEXT,
+    monitored_endpoint_id VARCHAR(36),
+    url VARCHAR(4096),
+    error TEXT
 );
-
