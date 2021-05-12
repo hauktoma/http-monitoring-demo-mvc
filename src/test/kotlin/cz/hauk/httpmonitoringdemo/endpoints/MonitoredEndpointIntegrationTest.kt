@@ -197,7 +197,7 @@ internal class MonitoredEndpointIntegrationTest : MonitoredEndpointIntegrationTe
         assertAll(
             { // user can list his results
                 listMonitoringResultRemotelyAndAssertResult(
-                    createdEndpoint.id, MonitoredResultFilterInFDTO()
+                    createdEndpoint.id, CustomPaginationFDTO()
                 ).also { response ->
                     Assertions.assertThat(response.items).isEmpty()
                     Assertions.assertThat(response.requestedPage).isZero
@@ -207,14 +207,33 @@ internal class MonitoredEndpointIntegrationTest : MonitoredEndpointIntegrationTe
             { // UUID must exist for the user
                 listMonitoringResultsRemotely(
                     UUID.randomUUID(),
-                    MonitoredResultFilterInFDTO()
+                    CustomPaginationFDTO()
                 ).expectStatus().isNotFound
             },
             { // 404 is returned when another user tries to read results
                 listMonitoringResultsRemotely(
-                    createdEndpoint.id, MonitoredResultFilterInFDTO(), apiKey = TestUserData.USER_API_KEY_2
+                    createdEndpoint.id, CustomPaginationFDTO(), apiKey = TestUserData.USER_API_KEY_2
                 ).expectStatus().isNotFound
             },
+        )
+    }
+
+    @Test
+    fun `user can read his endpoint list`() {
+        val createdEndpoint = createEndpointRemotelyAndAssertResult(mockRandomMonitoredEndpointInFDTO())
+
+        assertAll(
+            { // owner can list his endpoints
+                listMonitoringResultAndAssertResponse(CustomPaginationFDTO()).also { result ->
+                    Assertions.assertThat(result.items).anyMatch { it.id == createdEndpoint.id }
+                }
+            }, { // other user cannot list other user endpoints
+                listMonitoringResultAndAssertResponse(
+                    CustomPaginationFDTO(), TestUserData.USER_API_KEY_2
+                ).also { result ->
+                    Assertions.assertThat(result.items).noneMatch { it.id == createdEndpoint.id }
+                }
+            }
         )
     }
 }

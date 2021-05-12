@@ -107,8 +107,34 @@ class MonitoredEndpointService(
         owner_user_id = getUserId()
     )
 
+    fun filterEndpoints(
+        filter: CustomPaginationFDTO
+    ): MonitoringEndpointListFDTO = getUserId().let { userId ->
+        Mono.zip(
+            Mono.fromCallable {
+                monitoredEndpointRepo.findByOwnerUserId(
+                    userId,
+                    PageRequest.of(filter.page.toInt(), filter.size.toInt(), Sort.by("created_at").descending())
+                )
+            },
+            Mono.fromCallable {
+                monitoredEndpointRepo.countByOwnerUserId(userId)
+            }
+        ).subscribeOn(
+            Schedulers.boundedElastic()
+        ).map { (results, totalCount) ->
+            MonitoringEndpointListFDTO(
+                items = results.map { it.toFDTO() },
+                totalCount = totalCount,
+                resultCount = results.count(),
+                requestedPage = filter.page,
+                requestedPageSize = filter.size
+            )
+        }.block()!!
+    }
+
     fun filterResults(
-        id: UUID, filter: MonitoredResultFilterInFDTO
+        id: UUID, filter: CustomPaginationFDTO
     ): MonitoringResultListFDTO = getEndpoint(
         id
     ).let { monitoredEndpointDBO ->
@@ -121,11 +147,11 @@ class MonitoredEndpointService(
             },
             Mono.fromCallable { monitoringResultRepository.countByMonitoredEndpointId(id) }
         ).subscribeOn(Schedulers.boundedElastic()).block()!!
-    }.let { (result, totalCount) ->
+    }.let { (results, totalCount) ->
         MonitoringResultListFDTO(
-            items = result.map { it.toFDTO() },
+            items = results.map { it.toFDTO() },
             totalCount = totalCount,
-            resultCount = result.count(),
+            resultCount = results.count(),
             requestedPage = filter.page,
             requestedPageSize = filter.size
         )

@@ -3,6 +3,7 @@ package cz.hauk.httpmonitoringdemo.endpoints
 import org.springframework.data.annotation.Id
 import org.springframework.data.annotation.PersistenceConstructor
 import org.springframework.data.annotation.Transient
+import org.springframework.data.domain.Pageable
 import org.springframework.data.domain.Persistable
 import org.springframework.data.jdbc.repository.query.Modifying
 import org.springframework.data.jdbc.repository.query.Query
@@ -16,6 +17,9 @@ import java.util.*
 
 @Repository
 interface MonitoredEndpointRepository : CrudRepository<MonitoredEndpointDBO, UUID> {
+
+    fun findByOwnerUserId(ownerUserId: UUID, pageable: Pageable): List<MonitoredEndpointDBO>
+    fun countByOwnerUserId(ownerUserId: UUID): Long
 
     @Query("SELECT * FROM monitored_endpoint_dbo WHERE id = :id AND owner_user_id = :owner_user_id")
     fun findByIdAndUser(

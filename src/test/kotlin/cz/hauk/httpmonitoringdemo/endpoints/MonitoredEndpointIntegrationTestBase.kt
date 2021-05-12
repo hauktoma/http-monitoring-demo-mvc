@@ -1,5 +1,7 @@
 package cz.hauk.httpmonitoringdemo.endpoints
 
+import arrow.core.Option
+import arrow.core.getOrElse
 import cz.hauk.httpmonitoringdemo.HttpMonitoringDemoApplication
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.BeforeEach
@@ -7,11 +9,9 @@ import org.junit.jupiter.api.assertAll
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase
 import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.boot.test.web.client.TestRestTemplate
 import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.reactive.server.WebTestClient
-import org.springframework.transaction.annotation.Transactional
 import java.net.URL
 import java.time.Duration
 import java.util.*
@@ -106,7 +106,7 @@ abstract class MonitoredEndpointIntegrationTestBase {
         }
 
     fun listMonitoringResultsRemotely(
-        id: UUID, filter: MonitoredResultFilterInFDTO, apiKey: String = TestUserData.USER_API_KEY_1
+        id: UUID, filter: CustomPaginationFDTO, apiKey: String = TestUserData.USER_API_KEY_1
     ) = webClient
         .get()
         .uri { uri ->
@@ -119,10 +119,31 @@ abstract class MonitoredEndpointIntegrationTestBase {
         .exchange()
 
     fun listMonitoringResultRemotelyAndAssertResult(
-        id: UUID, filter: MonitoredResultFilterInFDTO, apiKey: String = TestUserData.USER_API_KEY_1
+        id: UUID, filter: CustomPaginationFDTO, apiKey: String = TestUserData.USER_API_KEY_1
     ): MonitoringResultListFDTO = listMonitoringResultsRemotely(id, filter, apiKey)
         .expectStatus().isOk
         .expectBody(MonitoringResultListFDTO::class.java)
+        .returnResult()
+        .responseBody!!
+
+    fun listMonitoringEndpointsRemotely(
+        filter: CustomPaginationFDTO, apiKey: String = TestUserData.USER_API_KEY_1
+    ) = webClient
+        .get()
+        .uri { uri ->
+            uri.path("/api/v1/monitoredEndpoint/list")
+                .queryParam("page", filter.page)
+                .queryParam("size", filter.size)
+                .build()
+        }
+        .setApiKey(apiKey)
+        .exchange()
+
+    fun listMonitoringResultAndAssertResponse(
+        filter: CustomPaginationFDTO, apiKey: String = TestUserData.USER_API_KEY_1
+    ): MonitoringEndpointListFDTO = listMonitoringEndpointsRemotely(filter, apiKey)
+        .expectStatus().isOk
+        .expectBody(MonitoringEndpointListFDTO::class.java)
         .returnResult()
         .responseBody!!
 

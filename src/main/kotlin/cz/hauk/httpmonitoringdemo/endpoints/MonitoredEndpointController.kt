@@ -2,7 +2,6 @@ package cz.hauk.httpmonitoringdemo.endpoints
 
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.media.Schema
-import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import org.springdoc.api.annotations.ParameterObject
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
@@ -50,11 +49,17 @@ class MonitoredEndpointController(
         @PathVariable("id", required = true) id: UUID
     ): Unit = endpointService.deleteEndpoint(id)
 
+    @Operation(description = "Allows to list user's monitoring endpoints.")
+    @GetMapping("/list")
+    fun listMonitoredEndpoints(
+        @ParameterObject @Valid filter: CustomPaginationFDTO
+    ): MonitoringEndpointListFDTO = endpointService.filterEndpoints(filter)
+
     @Operation(description = "Allows to list the monitoring results for endpoint by id.")
     @GetMapping("/id-{id}/result/list")
-    fun getMonitoredEndpointResultList(
+    fun listMonitoredEndpointsResults(
         @PathVariable("id", required = true) id: UUID,
-        @ParameterObject @Valid filter: MonitoredResultFilterInFDTO
+        @ParameterObject @Valid filter: CustomPaginationFDTO
     ): MonitoringResultListFDTO = endpointService.filterResults(id, filter)
 }
 
@@ -80,7 +85,7 @@ data class MonitoredEndpointOutFDTO(
     val ownerUserId: UUID
 )
 
-data class MonitoredResultFilterInFDTO(
+data class CustomPaginationFDTO(
     @field:PositiveOrZero
     val page: Long = 0,
     @field:Min(1) @field:Max(100)
@@ -102,6 +107,14 @@ data class MonitoringResultFDTO(
 
 data class MonitoringResultListFDTO(
     val items: List<MonitoringResultFDTO>,
+    val totalCount: Long,
+    val resultCount: Int,
+    val requestedPage: Long,
+    val requestedPageSize: Long
+)
+
+data class MonitoringEndpointListFDTO(
+    val items: List<MonitoredEndpointOutFDTO>,
     val totalCount: Long,
     val resultCount: Int,
     val requestedPage: Long,
