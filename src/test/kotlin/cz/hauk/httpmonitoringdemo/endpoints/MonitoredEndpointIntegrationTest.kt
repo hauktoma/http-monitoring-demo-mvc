@@ -7,6 +7,9 @@ import java.net.URL
 import java.time.Duration
 import java.util.*
 
+/**
+ * General REST-API tests for managing monitored endpoints.
+ */
 internal class MonitoredEndpointIntegrationTest : MonitoredEndpointIntegrationTestBase() {
 
     @Test
