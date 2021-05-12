@@ -3,7 +3,6 @@ package cz.hauk.httpmonitoringdemo.endpoints
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertAll
-import org.springframework.http.HttpStatus
 import java.net.URL
 import java.time.Duration
 import java.util.*
@@ -92,7 +91,7 @@ internal class MonitoredEndpointIntegrationTest : MonitoredEndpointIntegrationTe
     }
 
     @Test
-    fun `url and name is unique for one user`() {
+    fun `one user cannot create endpoint with duplicate name or url`() {
         val createdEndpoint = createEndpointRemotelyAndAssertResult(
             mockRandomMonitoredEndpointInFDTO(),
             apiKey = TestUserData.USER_API_KEY_1
@@ -113,6 +112,47 @@ internal class MonitoredEndpointIntegrationTest : MonitoredEndpointIntegrationTe
 
                 // user 1 will fail
                 createEndpointRemotely(inputWithDuplicateUrl, TestUserData.USER_API_KEY_1).expectStatus().isBadRequest
+                createEndpointRemotelyAndAssertResult(inputWithDuplicateUrl, TestUserData.USER_API_KEY_2)
+            }
+        )
+    }
+
+    @Test
+    fun `one user cannot update endpoint url or name when he does have them in different endpoint`() {
+        // create two endpoints for user
+        val createdEndpoint1 = createEndpointRemotelyAndAssertResult(
+            mockRandomMonitoredEndpointInFDTO(),
+            apiKey = TestUserData.USER_API_KEY_1
+        )
+        val createdEndpoint2 = createEndpointRemotelyAndAssertResult(
+            mockRandomMonitoredEndpointInFDTO(),
+            apiKey = TestUserData.USER_API_KEY_1
+        )
+
+        assertAll(
+            {
+                // cannot use the name again for user
+                val inputWithDuplicateName = mockRandomMonitoredEndpointInFDTO().copy(name = createdEndpoint1.name)
+
+                // user 1 will fail on update
+                updateEndpointRemotely(
+                    createdEndpoint2.id, // try to update the second endpoint with name of first
+                    inputWithDuplicateName,
+                    TestUserData.USER_API_KEY_1
+                ).expectStatus().isBadRequest
+                // user 2 will succeed in using the name
+                createEndpointRemotelyAndAssertResult(inputWithDuplicateName, TestUserData.USER_API_KEY_2)
+            }, {
+                // cannot use the url again for user
+                val inputWithDuplicateUrl = mockRandomMonitoredEndpointInFDTO().copy(url = createdEndpoint1.url)
+
+                // user 1 will fail on update
+                updateEndpointRemotely(
+                    createdEndpoint2.id, // try to update the second endpoint with name of first
+                    inputWithDuplicateUrl,
+                    TestUserData.USER_API_KEY_1
+                ).expectStatus().isBadRequest
+                // user 2 will succeed in using the url
                 createEndpointRemotelyAndAssertResult(inputWithDuplicateUrl, TestUserData.USER_API_KEY_2)
             }
         )

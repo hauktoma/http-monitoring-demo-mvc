@@ -78,9 +78,11 @@ class MonitoredEndpointService(
     fun updateEndpoint(
         id: UUID, input: MonitoredEndpointInFDTO
     ): MonitoredEndpointDBO = validateInputEndpointPayload(input).let {
-        monitoredEndpointRepo.updateForUser(
-            id, getUserId(), input.name, input.url, input.monitoredInterval
-        ).let { rowsUpdated ->
+        kotlin.runCatching {
+            monitoredEndpointRepo.updateForUser(id, getUserId(), input.name, input.url, input.monitoredInterval)
+        }.getOrElse {
+            determineAndThrowCreateError(input, it)
+        }.let { rowsUpdated ->
             when (rowsUpdated) {
                 1 -> getEndpoint(id)
                 else -> throwEndpointNotFound(id)
