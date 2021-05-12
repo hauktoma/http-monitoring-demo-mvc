@@ -5,6 +5,7 @@ import arrow.core.getOrElse
 import arrow.core.toOption
 import cz.hauk.httpmonitoringdemo.core.toMonoOption
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
@@ -23,7 +24,10 @@ import java.util.*
 class EndpointMonitoringTask(
     private val endpointRepo: MonitoredEndpointRepository,
     private val webClient: WebClient,
-    private val monitoringResultRepo: MonitoringResultRepository
+    private val monitoringResultRepo: MonitoringResultRepository,
+
+    @Value("\${task.monitoring.parallelism:10}")
+    private val parallelism: Int
 ) {
 
     // X|FIXME THa cap on the response body size, do not read whole?
@@ -47,7 +51,7 @@ class EndpointMonitoringTask(
         ).subscribeOn(
             Schedulers.boundedElastic()
         ).flatMap(
-            { record -> processRecord(record) }, 10
+            { record -> processRecord(record) }, parallelism
         ).blockLast()
 
         LOG.info("Monitor endpoint task finished successfully.")

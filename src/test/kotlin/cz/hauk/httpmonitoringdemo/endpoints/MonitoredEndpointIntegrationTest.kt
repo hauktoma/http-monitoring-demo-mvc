@@ -189,4 +189,32 @@ internal class MonitoredEndpointIntegrationTest : MonitoredEndpointIntegrationTe
             }
         )
     }
+
+    @Test
+    fun `appropriate user can list monitoring endpoint results`() {
+        val createdEndpoint = createEndpointRemotelyAndAssertResult(mockRandomMonitoredEndpointInFDTO())
+
+        assertAll(
+            { // user can list his results
+                listMonitoringResultRemotelyAndAssertResult(
+                    createdEndpoint.id, MonitoredResultFilterInFDTO()
+                ).also { response ->
+                    Assertions.assertThat(response.items).isEmpty()
+                    Assertions.assertThat(response.requestedPage).isZero
+                    Assertions.assertThat(response.totalCount).isZero
+                }
+            },
+            { // UUID must exist for the user
+                listMonitoringResultsRemotely(
+                    UUID.randomUUID(),
+                    MonitoredResultFilterInFDTO()
+                ).expectStatus().isNotFound
+            },
+            { // 404 is returned when another user tries to read results
+                listMonitoringResultsRemotely(
+                    createdEndpoint.id, MonitoredResultFilterInFDTO(), apiKey = TestUserData.USER_API_KEY_2
+                ).expectStatus().isNotFound
+            },
+        )
+    }
 }

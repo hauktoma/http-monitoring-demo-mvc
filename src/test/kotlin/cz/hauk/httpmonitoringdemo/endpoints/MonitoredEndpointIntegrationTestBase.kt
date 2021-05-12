@@ -26,6 +26,7 @@ abstract class MonitoredEndpointIntegrationTestBase {
 
     @Autowired
     lateinit var webClient: WebTestClient
+
     @Autowired
     lateinit var dbCleanDBTestHelper: CleanDBTestHelper
 
@@ -103,6 +104,27 @@ abstract class MonitoredEndpointIntegrationTestBase {
                 { Assertions.assertThat(response.ownerUserId.toString()).isNotBlank() },
             )
         }
+
+    fun listMonitoringResultsRemotely(
+        id: UUID, filter: MonitoredResultFilterInFDTO, apiKey: String = TestUserData.USER_API_KEY_1
+    ) = webClient
+        .get()
+        .uri { uri ->
+            uri.path("/api/v1/monitoredEndpoint/id-{id}/result/list")
+                .queryParam("page", filter.page)
+                .queryParam("size", filter.size)
+                .build(id)
+        }
+        .setApiKey(apiKey)
+        .exchange()
+
+    fun listMonitoringResultRemotelyAndAssertResult(
+        id: UUID, filter: MonitoredResultFilterInFDTO, apiKey: String = TestUserData.USER_API_KEY_1
+    ): MonitoringResultListFDTO = listMonitoringResultsRemotely(id, filter, apiKey)
+        .expectStatus().isOk
+        .expectBody(MonitoringResultListFDTO::class.java)
+        .returnResult()
+        .responseBody!!
 
     protected fun mockRandomMonitoredEndpointInFDTO(): MonitoredEndpointInFDTO = MonitoredEndpointInFDTO(
         name = UUID.randomUUID().toString(),
