@@ -9,7 +9,6 @@ import org.springframework.transaction.annotation.EnableTransactionManagement
 @SpringBootApplication
 @EnableJdbcRepositories
 @EnableTransactionManagement
-@EnableScheduling
 class HttpMonitoringDemoApplication
 
 // X|FIXME THa database indexes

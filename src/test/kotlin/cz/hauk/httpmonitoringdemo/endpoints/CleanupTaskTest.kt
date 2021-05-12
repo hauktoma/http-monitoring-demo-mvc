@@ -13,13 +13,12 @@ class CleanupTaskTest : MonitoredEndpointIntegrationTestBase() {
     @Autowired
     lateinit var deleteTask: MonitoredEndpointResultDeleteTask
 
-    // X|FIXME THa finish this
     @Test
     fun `url and name is unique for one user`() {
         val createdEndpoint = createEndpointRemotelyAndAssertResult(
             input = mockRandomMonitoredEndpointInFDTO(),
             apiKey = TestUserData.USER_API_KEY_1
         )
-        fail("finish")
+        fail("finish test")
     }
 }
