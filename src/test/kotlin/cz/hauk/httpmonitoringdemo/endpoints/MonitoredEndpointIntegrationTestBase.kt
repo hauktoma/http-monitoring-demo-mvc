@@ -7,9 +7,9 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.web.client.TestRestTemplate
-import org.springframework.http.*
 import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.ActiveProfiles
+import org.springframework.test.web.reactive.server.WebTestClient
 import java.net.URL
 import java.time.Duration
 import java.util.*
@@ -22,95 +22,81 @@ import java.util.*
 @ActiveProfiles("test")
 @DirtiesContext(classMode = DirtiesContext.ClassMode.BEFORE_EACH_TEST_METHOD)
 abstract class MonitoredEndpointIntegrationTestBase {
+
     @Autowired
-    lateinit var restTemplate: TestRestTemplate
+    lateinit var webClient: WebTestClient
 
-    protected fun deleteEndpointRemotely(
+    fun deleteEndpointRemotely(
         id: UUID, apiKey: String = TestUserData.USER_API_KEY_1
-    ): ResponseEntity<Unit> = restTemplate.exchange(
-        "/api/v1/monitoredEndpoint/id-{id}",
-        HttpMethod.DELETE,
-        HttpEntity<Unit>(
-            HttpHeaders().apply { set("Authorization", "ApiKey $apiKey") }
-        ),
-        Unit::class.java,
-        mapOf("id" to id.toString())
-    )
+    ): WebTestClient.ResponseSpec = webClient
+        .delete()
+        .uri("/api/v1/monitoredEndpoint/id-{id}", id)
+        .setApiKey(apiKey)
+        .exchange()
 
-    protected fun getEndpointRemotely(
+    fun deleteEndpointRemotelyAndAssertResult(
         id: UUID, apiKey: String = TestUserData.USER_API_KEY_1
-    ): ResponseEntity<MonitoredEndpointOutFDTO> = getEndpointRemotely(id, MonitoredEndpointOutFDTO::class.java, apiKey)
+    ) = deleteEndpointRemotely(id, apiKey).expectStatus().isOk
 
-    protected fun getEndpointRemotelyNoBody(
+
+    fun getEndpointRemotely(
         id: UUID, apiKey: String = TestUserData.USER_API_KEY_1
-    ): ResponseEntity<Unit> = getEndpointRemotely(id, Unit::class.java, apiKey)
+    ) = webClient
+        .get()
+        .uri("/api/v1/monitoredEndpoint/id-{id}", id)
+        .setApiKey(apiKey)
+        .exchange()
 
-    private fun <T> getEndpointRemotely(
-        id: UUID, bodyType: Class<T>, apiKey: String = TestUserData.USER_API_KEY_1
-    ): ResponseEntity<T> = restTemplate.exchange(
-        "/api/v1/monitoredEndpoint/id-{id}",
-        HttpMethod.GET,
-        HttpEntity<Unit>(HttpHeaders().apply { set("Authorization", "ApiKey $apiKey") }),
-        bodyType,
-        mapOf("id" to id.toString())
-    )
+    fun getEndpointRemotelyAndAssertResult(
+        id: UUID, apiKey: String = TestUserData.USER_API_KEY_1
+    ) = getEndpointRemotely(id, apiKey)
+        .expectStatus().isOk
+        .expectBody(MonitoredEndpointOutFDTO::class.java)
+        .returnResult()
+        .responseBody!!
 
-    protected fun updateEndpointRemotely(
+    fun updateEndpointRemotely(
         id: UUID, update: MonitoredEndpointInFDTO, apiKey: String = TestUserData.USER_API_KEY_1
-    ): ResponseEntity<MonitoredEndpointOutFDTO> = updateEndpointRemotely(
-        id, update, MonitoredEndpointOutFDTO::class.java, apiKey
-    )
+    ) = webClient
+        .put()
+        .uri("/api/v1/monitoredEndpoint/id-{id}", id)
+        .setApiKey(apiKey)
+        .bodyValue(update)
+        .exchange()
 
-    protected fun updateEndpointRemotelyNoBody(
+    fun updateEndpointRemotelyAndAssertResult(
         id: UUID, update: MonitoredEndpointInFDTO, apiKey: String = TestUserData.USER_API_KEY_1
-    ): ResponseEntity<Unit> = updateEndpointRemotely(id, update, Unit::class.java, apiKey)
+    ): MonitoredEndpointOutFDTO = updateEndpointRemotely(id, update, apiKey)
+        .expectStatus().isOk
+        .expectBody(MonitoredEndpointOutFDTO::class.java)
+        .returnResult()
+        .responseBody!!
 
-    protected fun <T> updateEndpointRemotely(
-        id: UUID, update: MonitoredEndpointInFDTO, bodyType: Class<T>, apiKey: String = TestUserData.USER_API_KEY_1
-    ): ResponseEntity<T> = restTemplate.exchange(
-        "/api/v1/monitoredEndpoint/id-{id}",
-        HttpMethod.PUT,
-        HttpEntity(
-            update,
-            HttpHeaders().apply { set("Authorization", "ApiKey $apiKey") }
-        ),
-        bodyType,
-        mapOf("id" to id.toString())
-    )
-
-    protected fun createEndpointRemotelyNoBody(
+    fun createEndpointRemotely(
         input: MonitoredEndpointInFDTO, apiKey: String = TestUserData.USER_API_KEY_1
-    ) = createEndpointRemotely(input, Unit::class.java, apiKey)
+    ) = webClient
+        .post()
+        .uri("/api/v1/monitoredEndpoint")
+        .setApiKey(apiKey)
+        .bodyValue(input)
+        .exchange()
 
-    protected fun <T> createEndpointRemotely(
-        input: MonitoredEndpointInFDTO, bodyType: Class<T>, apiKey: String = TestUserData.USER_API_KEY_1
-    ): ResponseEntity<T> = restTemplate.exchange(
-        "/api/v1/monitoredEndpoint",
-        HttpMethod.POST,
-        HttpEntity(
-            input,
-            HttpHeaders().apply { set("Authorization", "ApiKey $apiKey") }
-        ),
-        bodyType
-    )
-
-    protected fun createAndAssertEndpointRemotely(
-        input: MonitoredEndpointInFDTO = mockRandomMonitoredEndpointInFDTO(),
-        apiKey: String = TestUserData.USER_API_KEY_1
-    ): MonitoredEndpointOutFDTO = createEndpointRemotely(
-        input, MonitoredEndpointOutFDTO::class.java, apiKey
-    ).also { response ->
-        assertAll(
-            { Assertions.assertThat(response.statusCode).isEqualTo(HttpStatus.CREATED) },
-            { Assertions.assertThat(response.hasBody()).isTrue() },
-            { Assertions.assertThat(response.body?.id).isNotNull() },
-            { Assertions.assertThat(response.body?.createdAt).isNotNull() },
-            { Assertions.assertThat(response.body?.monitoredInterval).isEqualTo(input.monitoredInterval) },
-            { Assertions.assertThat(response.body?.url).isEqualTo(input.url) },
-            { Assertions.assertThat(response.body?.name).isEqualTo(input.name) },
-            { Assertions.assertThat(response.body?.ownerUserId?.toString()).isNotBlank() },
-        )
-    }.let { it.body!! }
+    fun createEndpointRemotelyAndAssertResult(
+        input: MonitoredEndpointInFDTO, apiKey: String = TestUserData.USER_API_KEY_1
+    ): MonitoredEndpointOutFDTO = createEndpointRemotely(input, apiKey)
+        .expectStatus().isCreated
+        .expectBody(MonitoredEndpointOutFDTO::class.java)
+        .returnResult()
+        .responseBody!!.also { response ->
+            assertAll(
+                { Assertions.assertThat(response.id).isNotNull() },
+                { Assertions.assertThat(response.createdAt).isNotNull() },
+                { Assertions.assertThat(response.monitoredInterval).isEqualTo(input.monitoredInterval) },
+                { Assertions.assertThat(response.url).isEqualTo(input.url) },
+                { Assertions.assertThat(response.name).isEqualTo(input.name) },
+                { Assertions.assertThat(response.ownerUserId.toString()).isNotBlank() },
+            )
+        }
 
     protected fun mockRandomMonitoredEndpointInFDTO(): MonitoredEndpointInFDTO = MonitoredEndpointInFDTO(
         name = UUID.randomUUID().toString(),
@@ -118,3 +104,7 @@ abstract class MonitoredEndpointIntegrationTestBase {
         monitoredInterval = Duration.ofSeconds((Random().nextInt(999) + 100).toLong())
     )
 }
+
+fun <S : WebTestClient.RequestHeadersSpec<S>> WebTestClient.RequestHeadersSpec<S>.setApiKey(
+    apiKey: String
+): S = header("Authorization", "ApiKey $apiKey")
