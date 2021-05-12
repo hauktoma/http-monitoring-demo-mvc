@@ -2,6 +2,7 @@ package cz.hauk.httpmonitoringdemo.endpoints
 
 import cz.hauk.httpmonitoringdemo.HttpMonitoringDemoApplication
 import org.assertj.core.api.Assertions
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.assertAll
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase
@@ -10,6 +11,7 @@ import org.springframework.boot.test.web.client.TestRestTemplate
 import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.reactive.server.WebTestClient
+import org.springframework.transaction.annotation.Transactional
 import java.net.URL
 import java.time.Duration
 import java.util.*
@@ -20,11 +22,15 @@ import java.util.*
 )
 @AutoConfigureTestDatabase
 @ActiveProfiles("test")
-@DirtiesContext(classMode = DirtiesContext.ClassMode.BEFORE_EACH_TEST_METHOD)
 abstract class MonitoredEndpointIntegrationTestBase {
 
     @Autowired
     lateinit var webClient: WebTestClient
+    @Autowired
+    lateinit var dbCleanDBTestHelper: CleanDBTestHelper
+
+    @BeforeEach
+    fun cleanDB(): Unit = dbCleanDBTestHelper.cleanDB()
 
     fun deleteEndpointRemotely(
         id: UUID, apiKey: String = TestUserData.USER_API_KEY_1
