@@ -1,4 +1,3 @@
---- X|FIXME THa check foreign keys? and other constrains
 --DROP TABLE IF EXISTS monitored_endpoint_dbo;
 --DROP TABLE IF EXISTS monitoring_result_dbo;
 --DROP TABLE IF EXISTS user_dbo;

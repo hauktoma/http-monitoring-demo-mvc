@@ -1,0 +1,24 @@
+version: '3'
+
+services:
+  http-monitoring-demo-mysql:
+    image: mysql:8.0
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=endpointmonitoring
+      - MYSQL_USER=myapp-user
+      - MYSQL_PASSWORD=password
+    ports:
+      - 3306:3306
+
+  http-monitoring-demo-mvc-app:
+    image: http-monitoring-demo-mvc
+    restart: on-failure
+    depends_on:
+      - http-monitoring-demo-mysql
+    ports:
+      - 8080:8080
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://http-monitoring-demo-mysql:3306/endpointmonitoring
+      SPRING_DATASOURCE_USERNAME: myapp-user
+      SPRING_DATASOURCE_PASSWORD: password
