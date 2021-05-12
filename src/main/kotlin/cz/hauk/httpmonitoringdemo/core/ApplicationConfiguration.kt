@@ -4,12 +4,13 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.web.reactive.function.client.WebClient
 
+
 @Configuration
-class WebClientConf {
+class ApplicationConfiguration {
 
     // X|FIXME THa review if it has sane timeouts by default
     @Bean
     fun webClient(webClientBuilder: WebClient.Builder): WebClient = webClientBuilder
-        .codecs { configurer -> configurer.defaultCodecs().maxInMemorySize(2 * 1024 * 1024) }
+        .codecs { conf -> conf.defaultCodecs().maxInMemorySize(2 * 1024 * 1024) }
         .build()
 }

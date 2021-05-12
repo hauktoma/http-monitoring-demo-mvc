@@ -27,7 +27,7 @@ class EndpointMonitoringTask(
 ) {
 
     // X|FIXME THa cap on the response body size, do not read whole?
-    @Scheduled(fixedDelay = 1000)
+    @Scheduled(fixedDelayString = "\${task.monitoring.delay.millis:1000}")
     fun monitorEndpoints() {
         LOG.info("Starting monitor endpoint task")
 

@@ -28,7 +28,7 @@ abstract class MonitoredEndpointIntegrationTestBase {
     protected fun deleteEndpointRemotely(
         id: UUID, apiKey: String = TestUserData.USER_API_KEY_1
     ): ResponseEntity<Unit> = restTemplate.exchange(
-        "/api/v1/monitoredEndpoints/id-{id}",
+        "/api/v1/monitoredEndpoint/id-{id}",
         HttpMethod.DELETE,
         HttpEntity<Unit>(
             HttpHeaders().apply { set("Authorization", "ApiKey $apiKey") }
@@ -48,7 +48,7 @@ abstract class MonitoredEndpointIntegrationTestBase {
     private fun <T> getEndpointRemotely(
         id: UUID, bodyType: Class<T>, apiKey: String = TestUserData.USER_API_KEY_1
     ): ResponseEntity<T> = restTemplate.exchange(
-        "/api/v1/monitoredEndpoints/id-{id}",
+        "/api/v1/monitoredEndpoint/id-{id}",
         HttpMethod.GET,
         HttpEntity<Unit>(HttpHeaders().apply { set("Authorization", "ApiKey $apiKey") }),
         bodyType,
@@ -68,7 +68,7 @@ abstract class MonitoredEndpointIntegrationTestBase {
     protected fun <T> updateEndpointRemotely(
         id: UUID, update: MonitoredEndpointInFDTO, bodyType: Class<T>, apiKey: String = TestUserData.USER_API_KEY_1
     ): ResponseEntity<T> = restTemplate.exchange(
-        "/api/v1/monitoredEndpoints/id-{id}",
+        "/api/v1/monitoredEndpoint/id-{id}",
         HttpMethod.PUT,
         HttpEntity(
             update,
@@ -85,7 +85,7 @@ abstract class MonitoredEndpointIntegrationTestBase {
     protected fun <T> createEndpointRemotely(
         input: MonitoredEndpointInFDTO, bodyType: Class<T>, apiKey: String = TestUserData.USER_API_KEY_1
     ): ResponseEntity<T> = restTemplate.exchange(
-        "/api/v1/monitoredEndpoints",
+        "/api/v1/monitoredEndpoint",
         HttpMethod.POST,
         HttpEntity(
             input,

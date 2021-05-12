@@ -4,9 +4,15 @@ import cz.hauk.httpmonitoringdemo.core.AuthenticationProvider
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.data.domain.PageRequest
+import org.springframework.data.domain.Sort
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.web.server.ResponseStatusException
+import reactor.core.publisher.Mono
+import reactor.core.scheduler.Schedulers
+import reactor.kotlin.core.util.function.component1
+import reactor.kotlin.core.util.function.component2
 import java.time.Duration
 import java.time.Instant
 import java.util.*
@@ -98,6 +104,30 @@ class MonitoredEndpointService(
         id = id,
         owner_user_id = getUserId()
     )
+
+    fun filterResults(
+        id: UUID, filter: MonitoredResultFilterInFDTO
+    ): MonitoringResultListFDTO = getEndpoint(
+        id
+    ).let { monitoredEndpointDBO ->
+        Mono.zip(
+            Mono.fromCallable {
+                monitoringResultRepository.findByMonitoredEndpointId(
+                    monitoredEndpointDBO.id,
+                    PageRequest.of(filter.page.toInt(), filter.size.toInt(), Sort.by("checked_at").descending())
+                )
+            },
+            Mono.fromCallable { monitoringResultRepository.countByMonitoredEndpointId(id) }
+        ).subscribeOn(Schedulers.boundedElastic()).block()!!
+    }.let { (result, totalCount) ->
+        MonitoringResultListFDTO(
+            items = result.map { it.toFDTO() },
+            totalCount = totalCount,
+            resultCount = result.count(),
+            requestedPage = filter.page,
+            requestedPageSize = filter.size
+        )
+    }
 
     private fun getUserId(): UUID = authenticationProvider.getAuthentication().principal
 

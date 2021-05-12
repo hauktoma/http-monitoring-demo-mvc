@@ -1,7 +1,7 @@
 --- X|FIXME THa check foreign keys? and other constrains
-DROP TABLE IF EXISTS monitored_endpoint_dbo;
-DROP TABLE IF EXISTS monitoring_result_dbo;
-DROP TABLE IF EXISTS user_dbo;
+--DROP TABLE IF EXISTS monitored_endpoint_dbo;
+--DROP TABLE IF EXISTS monitoring_result_dbo;
+--DROP TABLE IF EXISTS user_dbo;
 
 CREATE TABLE IF NOT EXISTS user_dbo (
     id VARCHAR(36) PRIMARY KEY NOT NULL,

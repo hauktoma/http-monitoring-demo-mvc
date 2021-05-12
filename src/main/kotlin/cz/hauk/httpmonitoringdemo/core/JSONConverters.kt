@@ -7,20 +7,18 @@ import com.fasterxml.jackson.databind.JsonDeserializer
 import com.fasterxml.jackson.databind.JsonSerializer
 import com.fasterxml.jackson.databind.SerializerProvider
 import org.springframework.boot.jackson.JsonComponent
-import org.springframework.http.HttpStatus
-import org.springframework.web.server.ResponseStatusException
-import java.io.IOException
+import org.springframework.http.MediaType
 import java.net.URL
 
 @JsonComponent
-object URLConverter {
-    class Serialize : JsonSerializer<URL>() {
+object JsonConverters {
+    class SerializeUrl : JsonSerializer<URL>() {
         override fun serialize(
             value: URL, jgen: JsonGenerator, provider: SerializerProvider
         ) = jgen.writeString(value.toString())
     }
 
-    class Deserialize : JsonDeserializer<URL>() {
+    class DeserializeUrl : JsonDeserializer<URL>() {
         override fun deserialize(
             jp: JsonParser, ctxt: DeserializationContext
         ): URL? = jp.text.let { input ->
@@ -41,5 +39,11 @@ object URLConverter {
         companion object {
             private const val MAX_URL_LENGTH = 9999
         }
+    }
+
+    class SerializeMediaType : JsonSerializer<MediaType>() {
+        override fun serialize(
+            value: MediaType, jgen: JsonGenerator, provider: SerializerProvider
+        ) = jgen.writeString(value.toString())
     }
 }
