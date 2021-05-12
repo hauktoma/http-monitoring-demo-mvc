@@ -98,7 +98,7 @@ data class MonitoringResultDBO(
 fun MonitoringResultDBO.toFDTO() = MonitoringResultFDTO(
     id = this.id,
     checkedAt = this.checkedAt,
-    statusCode = this.statusCode,
+    statusCode = this.statusCode?.value(),
     contentType = this.contentType,
     payload = this.payload,
     monitoredEndpointId = this.monitoredEndpointId,

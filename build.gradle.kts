@@ -32,6 +32,10 @@ dependencies {
 	implementation("io.arrow-kt:arrow-core:0.8.2")
 	implementation("io.arrow-kt:arrow-data:0.8.2")
 
+	implementation("org.springdoc:springdoc-openapi-ui:1.5.7")
+	implementation("org.springdoc:springdoc-openapi-data-rest:1.5.7")
+	implementation("org.springdoc:springdoc-openapi-kotlin:1.5.7")
+
 	implementation("mysql:mysql-connector-java:8.0.24")
 	implementation("io.projectreactor:reactor-core")
 	implementation("io.projectreactor.kotlin:reactor-kotlin-extensions:1.1.3")
